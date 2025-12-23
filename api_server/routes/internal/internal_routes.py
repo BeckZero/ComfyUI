@@ -21,6 +21,8 @@ INSTALL_JOBS: Dict[str, Dict[str, Any]] = {}
 INSTALL_LOCK = Lock()
 DOWNLOAD_JOBS: Dict[str, Dict[str, Any]] = {}
 DOWNLOAD_LOCK = Lock()
+GIT_JOBS: Dict[str, Dict[str, Any]] = {}
+GIT_LOCK = Lock()
 
 
 def _now_iso() -> str:
@@ -110,11 +112,23 @@ def _read_log_tail(path: Path, max_bytes: int = 64 * 1024) -> str:
     return data.decode("utf-8", errors="replace")
 
 
-def _run_logged(command: list[str], log_path: Path, env: Dict[str, str]) -> int:
+def _run_logged(
+    command: list[str],
+    log_path: Path,
+    env: Dict[str, str],
+    cwd: Optional[Path] = None,
+    log_command: Optional[list[str]] = None,
+) -> int:
     with log_path.open("a", encoding="utf-8") as handle:
-        handle.write(f"$ {' '.join(command)}\n")
+        handle.write(f"$ {' '.join(log_command or command)}\n")
         handle.flush()
-        process = subprocess.run(command, stdout=handle, stderr=subprocess.STDOUT, env=env)
+        process = subprocess.run(
+            command,
+            stdout=handle,
+            stderr=subprocess.STDOUT,
+            env=env,
+            cwd=str(cwd) if cwd else None,
+        )
     return process.returncode
 
 
@@ -171,6 +185,10 @@ def _downloads_allowed() -> bool:
     if os.getenv("COMFY_ALLOW_DOWNLOAD") is not None:
         return _env_bool("COMFY_ALLOW_DOWNLOAD", False)
     return _env_bool("COMFY_ALLOW_INSTALL", False)
+
+
+def _git_update_allowed() -> bool:
+    return _env_bool("COMFY_ALLOW_GIT_UPDATE", False)
 
 
 def _install_flash_attn_job(
@@ -257,6 +275,17 @@ def _strip_token_from_url(url: str) -> str:
     return urlunparse(parsed._replace(query=urlencode(query)))
 
 
+def _redact_url(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return url
+    safe_url = _strip_token_from_url(url)
+    parsed = urlparse(safe_url)
+    if parsed.scheme and parsed.netloc and "@" in parsed.netloc:
+        _, host = parsed.netloc.rsplit("@", 1)
+        return urlunparse(parsed._replace(netloc=f"***@{host}"))
+    return safe_url
+
+
 def _quote_path(value: str) -> str:
     return "/".join(quote(part) for part in value.split("/"))
 
@@ -341,6 +370,150 @@ def _update_download_job(job_id: str, **updates: Any) -> None:
     with DOWNLOAD_LOCK:
         if job_id in DOWNLOAD_JOBS:
             DOWNLOAD_JOBS[job_id].update(updates)
+
+
+def _is_safe_git_ref(value: str) -> bool:
+    if not value:
+        return False
+    if value.startswith("/") or value.endswith("/") or value.endswith(".lock"):
+        return False
+    if ".." in value:
+        return False
+    if any(char in value for char in (" ", "~", "^", ":", "?", "*", "\\", "[", "]", "@")):
+        return False
+    return True
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[3]
+
+
+def _ensure_git_remote(
+    repo_dir: Path,
+    remote: str,
+    url: Optional[str],
+    log_path: Path,
+    env: Dict[str, str],
+) -> None:
+    safe_url = _redact_url(url)
+    result = subprocess.run(
+        ["git", "remote", "get-url", remote],
+        capture_output=True,
+        text=True,
+        cwd=str(repo_dir),
+    )
+    if result.returncode != 0:
+        if not url:
+            raise RuntimeError(f"Remote '{remote}' is not configured")
+        code = _run_logged(
+            ["git", "remote", "add", remote, url],
+            log_path,
+            env,
+            cwd=repo_dir,
+            log_command=["git", "remote", "add", remote, safe_url or ""],
+        )
+        if code != 0:
+            raise RuntimeError(f"Failed to add remote '{remote}'")
+    elif url:
+        code = _run_logged(
+            ["git", "remote", "set-url", remote, url],
+            log_path,
+            env,
+            cwd=repo_dir,
+            log_command=["git", "remote", "set-url", remote, safe_url or ""],
+        )
+        if code != 0:
+            raise RuntimeError(f"Failed to set remote '{remote}' URL")
+
+
+def _update_git_job(job_id: str, **updates: Any) -> None:
+    with GIT_LOCK:
+        if job_id in GIT_JOBS:
+            GIT_JOBS[job_id].update(updates)
+
+
+def _git_update_job(
+    job_id: str,
+    log_path: Path,
+    branch: str,
+    merge: bool,
+    push: bool,
+    upstream_remote: str,
+    origin_remote: str,
+    upstream_url: Optional[str],
+    origin_url: Optional[str],
+) -> None:
+    _update_git_job(job_id, state="running", started_at=_now_iso())
+    env = os.environ.copy()
+    repo_dir = _repo_root()
+    try:
+        if shutil.which("git") is None:
+            raise RuntimeError("git not found in PATH")
+        if not (repo_dir / ".git").exists():
+            raise RuntimeError(f"Repository not found at {repo_dir}")
+
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            cwd=str(repo_dir),
+        )
+        if status.returncode != 0:
+            raise RuntimeError("git status failed")
+        if status.stdout.strip():
+            raise RuntimeError("Working tree has local changes; aborting update")
+
+        _ensure_git_remote(repo_dir, upstream_remote, upstream_url, log_path, env)
+        if push or origin_url:
+            _ensure_git_remote(repo_dir, origin_remote, origin_url, log_path, env)
+
+        current_branch = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=str(repo_dir),
+        )
+        if current_branch.returncode != 0:
+            raise RuntimeError("Failed to determine current branch")
+        if current_branch.stdout.strip() != branch:
+            raise RuntimeError(f"Current branch is '{current_branch.stdout.strip()}', expected '{branch}'")
+
+        fetch_code = _run_logged(["git", "fetch", upstream_remote], log_path, env, cwd=repo_dir)
+        if fetch_code != 0:
+            raise RuntimeError("git fetch failed")
+
+        merge_target = f"{upstream_remote}/{branch}"
+        merge_command = ["git", "merge"]
+        if merge:
+            merge_command.append("--no-edit")
+        else:
+            merge_command.append("--ff-only")
+        merge_command.append(merge_target)
+
+        merge_code = _run_logged(merge_command, log_path, env, cwd=repo_dir)
+        if merge_code != 0:
+            if merge and (repo_dir / ".git" / "MERGE_HEAD").exists():
+                _run_logged(["git", "merge", "--abort"], log_path, env, cwd=repo_dir)
+            raise RuntimeError("git merge failed")
+
+        if push:
+            push_code = _run_logged(["git", "push", origin_remote, branch], log_path, env, cwd=repo_dir)
+            if push_code != 0:
+                raise RuntimeError("git push failed")
+
+        _update_git_job(
+            job_id,
+            state="succeeded",
+            finished_at=_now_iso(),
+            return_code=0,
+        )
+    except Exception as exc:
+        _update_git_job(
+            job_id,
+            state="failed",
+            finished_at=_now_iso(),
+            error=str(exc),
+        )
 
 
 def _download_file_job(
@@ -752,6 +925,111 @@ class InternalRoutes:
                     return web.json_response({"error": "Job not found"}, status=404)
                 job_data = dict(job)
 
+            return web.json_response(job_data, status=200)
+
+        @self.routes.post('/git/update')
+        async def git_update(request: web.Request) -> web.Response:
+            if not _git_update_allowed():
+                return web.json_response({"error": "Git update API disabled"}, status=403)
+            if not _token_ok(request):
+                return web.json_response({"error": "Invalid token"}, status=403)
+
+            payload: Dict[str, Any] = {}
+            if request.can_read_body:
+                try:
+                    payload = await request.json()
+                except Exception:
+                    return web.json_response({"error": "Invalid JSON body"}, status=400)
+
+            branch = payload.get("branch") or os.getenv("COMFY_GIT_BRANCH") or "master"
+            if not isinstance(branch, str) or not _is_safe_git_ref(branch):
+                return web.json_response({"error": "Invalid branch name"}, status=400)
+
+            merge = _parse_bool(payload.get("merge"), False)
+            push = _parse_bool(payload.get("push"), False)
+
+            upstream_remote = payload.get("upstream_remote") or os.getenv("COMFY_GIT_UPSTREAM_REMOTE") or "upstream"
+            origin_remote = payload.get("origin_remote") or os.getenv("COMFY_GIT_ORIGIN_REMOTE") or "origin"
+            if not isinstance(upstream_remote, str) or not upstream_remote.strip():
+                return web.json_response({"error": "Invalid upstream_remote"}, status=400)
+            if not isinstance(origin_remote, str) or not origin_remote.strip():
+                return web.json_response({"error": "Invalid origin_remote"}, status=400)
+
+            allow_remote_update = _env_bool("COMFY_ALLOW_GIT_REMOTE_UPDATE", False)
+            upstream_url = None
+            origin_url = None
+            if allow_remote_update:
+                upstream_url = payload.get("upstream_url") or os.getenv("COMFY_GIT_UPSTREAM_URL")
+                origin_url = payload.get("origin_url") or os.getenv("COMFY_GIT_ORIGIN_URL")
+            else:
+                upstream_url = os.getenv("COMFY_GIT_UPSTREAM_URL")
+                origin_url = os.getenv("COMFY_GIT_ORIGIN_URL")
+
+            job_id = uuid.uuid4().hex
+            log_dir = Path(get_directory_by_type("output")) / "git"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_path = log_dir / f"git-update-{job_id}.log"
+
+            with GIT_LOCK:
+                GIT_JOBS[job_id] = {
+                    "id": job_id,
+                    "state": "queued",
+                    "created_at": _now_iso(),
+                    "started_at": None,
+                    "finished_at": None,
+                    "error": None,
+                    "branch": branch,
+                    "merge": merge,
+                    "push": push,
+                    "upstream_remote": upstream_remote,
+                    "origin_remote": origin_remote,
+                    "log_path": str(log_path),
+                }
+
+            thread = Thread(
+                target=_git_update_job,
+                args=(
+                    job_id,
+                    log_path,
+                    branch,
+                    merge,
+                    push,
+                    upstream_remote,
+                    origin_remote,
+                    upstream_url,
+                    origin_url,
+                ),
+                daemon=True,
+            )
+            thread.start()
+
+            return web.json_response(
+                {
+                    "job_id": job_id,
+                    "status_url": f"/internal/git/update/{job_id}",
+                    "branch": branch,
+                    "merge": merge,
+                    "push": push,
+                },
+                status=202,
+            )
+
+        @self.routes.get('/git/update/{job_id}')
+        async def get_git_update_status(request: web.Request) -> web.Response:
+            if not _git_update_allowed():
+                return web.json_response({"error": "Git update API disabled"}, status=403)
+            if not _token_ok(request):
+                return web.json_response({"error": "Invalid token"}, status=403)
+
+            job_id = request.match_info["job_id"]
+            with GIT_LOCK:
+                job = GIT_JOBS.get(job_id)
+                if job is None:
+                    return web.json_response({"error": "Job not found"}, status=404)
+                job_data = dict(job)
+
+            log_path = Path(job_data.get("log_path", ""))
+            job_data["log_tail"] = _read_log_tail(log_path)
             return web.json_response(job_data, status=200)
 
     def get_app(self):

@@ -62,6 +62,10 @@ download "https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/resolve/main/z_image_t
   "./models/diffusion_models/z_image_turbo-Q5_K_M.gguf" &
 pids+=("$!")
 
+download "https://civitai.com/api/download/models/2530056?type=Model&format=SafeTensor" \
+  "./models/diffusion_models/zit_mystic_xxx_v3.safetensors" &
+pids+=("$!") 
+
 download_failed=0
 for pid in "${pids[@]}"; do
   if ! wait "$pid"; then
@@ -120,7 +124,7 @@ if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" || "$CLOUDFLARE_TUNNEL_ENABLE" == "1" ]]; th
     echo "cloudflared started (trycloudflare mode)"
     url=""
     for _ in {1..15}; do
-      url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\\.trycloudflare\\.com' /var/log/cloudflared.log | tail -n 1 || true)"
+      url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' /var/log/cloudflared.log | tail -n 1 || true)"
       if [[ -n "$url" ]]; then
         echo "cloudflared url: $url"
         break

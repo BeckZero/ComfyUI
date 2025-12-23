@@ -62,9 +62,6 @@ download "https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/resolve/main/z_image_t
   "./models/diffusion_models/z_image_turbo-Q5_K_M.gguf" &
 pids+=("$!")
 
-download "https://civitai.com/api/download/models/2530056?type=Model&format=SafeTensor" \
-  "./models/diffusion_models/zit_mystic_xxx_v3.safetensors" &
-pids+=("$!") 
 
 download_failed=0
 for pid in "${pids[@]}"; do

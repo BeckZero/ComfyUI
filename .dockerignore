@@ -1,0 +1,17 @@
+.git
+.github
+.ci
+__pycache__/
+*.py[cod]
+output/
+input/
+models/
+temp/
+custom_nodes/
+user/
+tests/
+tests-unit/
+*.ckpt
+*.safetensors
+.DS_Store
+._*

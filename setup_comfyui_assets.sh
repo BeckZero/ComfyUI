@@ -80,14 +80,30 @@ if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" || "$CLOUDFLARE_TUNNEL_ENABLE" == "1" ]]; th
   echo "cloudflared started"
 fi
 
+# Download models in parallel to reduce startup time.
+pids=()
 download "https://huggingface.co/gguf-org/z-image-gguf/resolve/main/pig_flux_vae_fp32-f16.gguf?download=true" \
-  "./models/vae/pig_flux_vae_fp32-f16.gguf"
+  "./models/vae/pig_flux_vae_fp32-f16.gguf" &
+pids+=("$!")
 
 download "https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q5_K_M.gguf?download=true" \
-  "./models/text_encoders/Qwen3-4B-Q5_K_M.gguf"
+  "./models/text_encoders/Qwen3-4B-Q5_K_M.gguf" &
+pids+=("$!")
 
 download "https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q5_K_M.gguf?download=true" \
-  "./models/diffusion_models/z_image_turbo-Q5_K_M.gguf"
+  "./models/diffusion_models/z_image_turbo-Q5_K_M.gguf" &
+pids+=("$!")
+
+download_failed=0
+for pid in "${pids[@]}"; do
+  if ! wait "$pid"; then
+    download_failed=1
+  fi
+done
+if ((download_failed)); then
+  echo "one or more model downloads failed" >&2
+  exit 1
+fi
 
 if [[ -d "custom_nodes/gguf/.git" ]]; then
   git -C custom_nodes/gguf pull --ff-only

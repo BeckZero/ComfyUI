@@ -109,11 +109,24 @@ if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" || "$CLOUDFLARE_TUNNEL_ENABLE" == "1" ]]; th
   if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" ]]; then
     cloudflared tunnel --no-autoupdate run --token "$CLOUDFLARE_TUNNEL_TOKEN" \
       > /var/log/cloudflared.log 2>&1 &
+    echo "cloudflared started (token mode)"
   else
     cloudflared tunnel --no-autoupdate --url "$CLOUDFLARE_TUNNEL_URL" \
       > /var/log/cloudflared.log 2>&1 &
+    echo "cloudflared started (trycloudflare mode)"
+    url=""
+    for _ in {1..15}; do
+      url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\\.trycloudflare\\.com' /var/log/cloudflared.log | tail -n 1 || true)"
+      if [[ -n "$url" ]]; then
+        echo "cloudflared url: $url"
+        break
+      fi
+      sleep 1
+    done
+    if [[ -z "$url" ]]; then
+      echo "cloudflared url not found yet; check /var/log/cloudflared.log"
+    fi
   fi
-  echo "cloudflared started"
 fi
 #####
 # Solo si quieres que el script arranque ComfyUI:

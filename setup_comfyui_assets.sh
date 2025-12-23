@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /workspace
-
-if [ ! -d /workspace/ComfyUI ]; then
-  git clone https://github.com/BeckZero/ComfyUI.git
-fi
-
 cd /workspace/ComfyUI
 
 mkdir -p /comfyui/{custom_nodes,input,output,models,temp}

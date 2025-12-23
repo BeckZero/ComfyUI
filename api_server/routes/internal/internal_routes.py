@@ -21,6 +21,8 @@ INSTALL_JOBS: Dict[str, Dict[str, Any]] = {}
 INSTALL_LOCK = Lock()
 DOWNLOAD_JOBS: Dict[str, Dict[str, Any]] = {}
 DOWNLOAD_LOCK = Lock()
+SNAPSHOT_JOBS: Dict[str, Dict[str, Any]] = {}
+SNAPSHOT_LOCK = Lock()
 GIT_JOBS: Dict[str, Dict[str, Any]] = {}
 GIT_LOCK = Lock()
 
@@ -370,6 +372,98 @@ def _update_download_job(job_id: str, **updates: Any) -> None:
     with DOWNLOAD_LOCK:
         if job_id in DOWNLOAD_JOBS:
             DOWNLOAD_JOBS[job_id].update(updates)
+
+
+def _update_snapshot_job(job_id: str, **updates: Any) -> None:
+    with SNAPSHOT_LOCK:
+        if job_id in SNAPSHOT_JOBS:
+            SNAPSHOT_JOBS[job_id].update(updates)
+
+
+def _parse_patterns(value: Any) -> list[str]:
+    if not value:
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str):
+        parts = value.replace("\n", ",").split(",")
+        return [part.strip() for part in parts if part.strip()]
+    return []
+
+
+def _count_files_and_bytes(path: Path) -> tuple[int, int]:
+    total_bytes = 0
+    total_files = 0
+    for file_path in path.rglob("*"):
+        if file_path.is_file():
+            total_files += 1
+            try:
+                total_bytes += file_path.stat().st_size
+            except OSError:
+                continue
+    return total_files, total_bytes
+
+
+def _snapshot_download_job(
+    job_id: str,
+    log_path: Path,
+    repo_id: str,
+    revision: str,
+    repo_type: str,
+    token: Optional[str],
+    allow_patterns: list[str],
+    ignore_patterns: list[str],
+    folder_type: str,
+    subfolder: Optional[str],
+) -> None:
+    _update_snapshot_job(job_id, state="running", started_at=_now_iso())
+    try:
+        try:
+            from huggingface_hub import snapshot_download
+        except ImportError as exc:
+            raise RuntimeError("huggingface_hub is not installed") from exc
+
+        target_subfolder = subfolder if subfolder else repo_id
+        dest_dir = _resolve_download_dir(folder_type, target_subfolder)
+        os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write(f"repo_id: {repo_id}\n")
+            handle.write(f"revision: {revision}\n")
+            handle.write(f"repo_type: {repo_type}\n")
+            handle.write(f"dest: {dest_dir}\n")
+            if allow_patterns:
+                handle.write(f"allow_patterns: {allow_patterns}\n")
+            if ignore_patterns:
+                handle.write(f"ignore_patterns: {ignore_patterns}\n")
+
+        snapshot_download(
+            repo_id=repo_id,
+            revision=revision,
+            repo_type=repo_type,
+            local_dir=str(dest_dir),
+            local_dir_use_symlinks=False,
+            token=token,
+            allow_patterns=allow_patterns or None,
+            ignore_patterns=ignore_patterns or None,
+        )
+
+        files_count, total_bytes = _count_files_and_bytes(dest_dir)
+        _update_snapshot_job(
+            job_id,
+            state="succeeded",
+            finished_at=_now_iso(),
+            files_count=files_count,
+            total_bytes=total_bytes,
+            path=str(dest_dir),
+        )
+    except Exception as exc:
+        _update_snapshot_job(
+            job_id,
+            state="failed",
+            finished_at=_now_iso(),
+            error=str(exc),
+        )
 
 
 def _is_safe_git_ref(value: str) -> bool:
@@ -925,6 +1019,124 @@ class InternalRoutes:
                     return web.json_response({"error": "Job not found"}, status=404)
                 job_data = dict(job)
 
+            return web.json_response(job_data, status=200)
+
+        @self.routes.post('/download/snapshot')
+        async def download_snapshot(request: web.Request) -> web.Response:
+            if not _downloads_allowed():
+                return web.json_response({"error": "Download API disabled"}, status=403)
+            if not _token_ok(request):
+                return web.json_response({"error": "Invalid token"}, status=403)
+
+            try:
+                payload = await request.json()
+            except Exception:
+                return web.json_response({"error": "Invalid JSON body"}, status=400)
+
+            if not isinstance(payload, dict):
+                return web.json_response({"error": "Invalid request body"}, status=400)
+
+            repo_id = payload.get("repo_id") or payload.get("hf_repo")
+            if not isinstance(repo_id, str) or not repo_id.strip():
+                return web.json_response({"error": "repo_id is required"}, status=400)
+
+            revision = payload.get("revision", "main")
+            if not isinstance(revision, str) or not revision.strip():
+                return web.json_response({"error": "revision must be a string"}, status=400)
+
+            repo_type = payload.get("repo_type", "model")
+            if not isinstance(repo_type, str) or not repo_type.strip():
+                return web.json_response({"error": "repo_type must be a string"}, status=400)
+
+            folder_type = payload.get("folder_type", "diffusers")
+            if not isinstance(folder_type, str) or not folder_type.strip():
+                return web.json_response({"error": "folder_type must be a string"}, status=400)
+
+            allowed_folders = set(folder_names_and_paths.keys()) | {"output", "input", "temp"}
+            if folder_type not in allowed_folders:
+                return web.json_response({"error": f"Invalid folder_type: {folder_type}"}, status=400)
+
+            subfolder = payload.get("subfolder")
+            if subfolder:
+                try:
+                    _sanitize_subfolder(str(subfolder))
+                except ValueError as exc:
+                    return web.json_response({"error": str(exc)}, status=400)
+
+            token = payload.get("token") or payload.get("hf_token") or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
+            allow_patterns = _parse_patterns(payload.get("allow_patterns"))
+            ignore_patterns = _parse_patterns(payload.get("ignore_patterns"))
+
+            job_id = uuid.uuid4().hex
+            log_dir = Path(get_directory_by_type("output")) / "snapshots"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_path = log_dir / f"snapshot-{job_id}.log"
+
+            with SNAPSHOT_LOCK:
+                SNAPSHOT_JOBS[job_id] = {
+                    "id": job_id,
+                    "state": "queued",
+                    "created_at": _now_iso(),
+                    "started_at": None,
+                    "finished_at": None,
+                    "error": None,
+                    "repo_id": repo_id,
+                    "revision": revision,
+                    "repo_type": repo_type,
+                    "folder_type": folder_type,
+                    "subfolder": subfolder,
+                    "allow_patterns": allow_patterns,
+                    "ignore_patterns": ignore_patterns,
+                    "files_count": None,
+                    "total_bytes": None,
+                    "path": None,
+                    "log_path": str(log_path),
+                }
+
+            thread = Thread(
+                target=_snapshot_download_job,
+                args=(
+                    job_id,
+                    log_path,
+                    repo_id.strip(),
+                    revision.strip(),
+                    repo_type.strip(),
+                    token,
+                    allow_patterns,
+                    ignore_patterns,
+                    folder_type,
+                    subfolder,
+                ),
+                daemon=True,
+            )
+            thread.start()
+
+            return web.json_response(
+                {
+                    "job_id": job_id,
+                    "status_url": f"/internal/download/snapshot/{job_id}",
+                    "folder_type": folder_type,
+                    "subfolder": subfolder,
+                },
+                status=202,
+            )
+
+        @self.routes.get('/download/snapshot/{job_id}')
+        async def get_download_snapshot_status(request: web.Request) -> web.Response:
+            if not _downloads_allowed():
+                return web.json_response({"error": "Download API disabled"}, status=403)
+            if not _token_ok(request):
+                return web.json_response({"error": "Invalid token"}, status=403)
+
+            job_id = request.match_info["job_id"]
+            with SNAPSHOT_LOCK:
+                job = SNAPSHOT_JOBS.get(job_id)
+                if job is None:
+                    return web.json_response({"error": "Job not found"}, status=404)
+                job_data = dict(job)
+
+            log_path = Path(job_data.get("log_path", ""))
+            job_data["log_tail"] = _read_log_tail(log_path)
             return web.json_response(job_data, status=200)
 
         @self.routes.post('/git/update')

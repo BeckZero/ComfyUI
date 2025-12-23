@@ -13,6 +13,7 @@ export COMFY_GIT_UPSTREAM_URL=https://github.com/comfyanonymous/ComfyUI.git
 export COMFY_GIT_ORIGIN_URL=https://github.com/BeckZero/ComfyUI.git
 export COMFY_GIT_BRANCH=master
 export CLOUDFLARE_TUNNEL_ENABLE=1
+export CLOUDFLARE_TUNNEL_PROTOCOL=http2
 
 python3 -m pip install -r requirements.txt
 
@@ -86,6 +87,7 @@ apt-get update && apt-get install -y lsof
 CLOUDFLARE_TUNNEL_TOKEN="${CLOUDFLARE_TUNNEL_TOKEN:-}"
 CLOUDFLARE_TUNNEL_URL="${CLOUDFLARE_TUNNEL_URL:-http://127.0.0.1:8188}"
 CLOUDFLARE_TUNNEL_ENABLE="${CLOUDFLARE_TUNNEL_ENABLE:-0}"
+CLOUDFLARE_TUNNEL_PROTOCOL="${CLOUDFLARE_TUNNEL_PROTOCOL:-http2}"
 
 if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" || "$CLOUDFLARE_TUNNEL_ENABLE" == "1" ]]; then
   if ! command -v cloudflared >/dev/null 2>&1; then
@@ -107,11 +109,13 @@ if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" || "$CLOUDFLARE_TUNNEL_ENABLE" == "1" ]]; th
   fi
 
   if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" ]]; then
-    cloudflared tunnel --no-autoupdate run --token "$CLOUDFLARE_TUNNEL_TOKEN" \
+    cloudflared tunnel --no-autoupdate --protocol "$CLOUDFLARE_TUNNEL_PROTOCOL" run \
+      --token "$CLOUDFLARE_TUNNEL_TOKEN" \
       > /var/log/cloudflared.log 2>&1 &
     echo "cloudflared started (token mode)"
   else
-    cloudflared tunnel --no-autoupdate --url "$CLOUDFLARE_TUNNEL_URL" \
+    cloudflared tunnel --no-autoupdate --protocol "$CLOUDFLARE_TUNNEL_PROTOCOL" \
+      --url "$CLOUDFLARE_TUNNEL_URL" \
       > /var/log/cloudflared.log 2>&1 &
     echo "cloudflared started (trycloudflare mode)"
     url=""

@@ -47,39 +47,6 @@ download() {
   fi
 }
 
-CLOUDFLARE_TUNNEL_TOKEN="${CLOUDFLARE_TUNNEL_TOKEN:-}"
-CLOUDFLARE_TUNNEL_URL="${CLOUDFLARE_TUNNEL_URL:-http://127.0.0.1:8188}"
-CLOUDFLARE_TUNNEL_ENABLE="${CLOUDFLARE_TUNNEL_ENABLE:-0}"
-
-if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" || "$CLOUDFLARE_TUNNEL_ENABLE" == "1" ]]; then
-  if ! command -v cloudflared >/dev/null 2>&1; then
-    arch="$(uname -m)"
-    case "$arch" in
-      x86_64|amd64) cf_arch="amd64" ;;
-      aarch64|arm64) cf_arch="arm64" ;;
-      *) echo "unsupported arch for cloudflared: $arch" >&2; exit 1 ;;
-    esac
-    bin_dir="/usr/local/bin"
-    if [[ ! -w "$bin_dir" ]]; then
-      bin_dir="${HOME:-/root}/.local/bin"
-      mkdir -p "$bin_dir"
-      export PATH="$bin_dir:$PATH"
-    fi
-    download "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$cf_arch" \
-      "${bin_dir}/cloudflared"
-    chmod +x "${bin_dir}/cloudflared"
-  fi
-
-  if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" ]]; then
-    cloudflared tunnel --no-autoupdate run --token "$CLOUDFLARE_TUNNEL_TOKEN" \
-      > /var/log/cloudflared.log 2>&1 &
-  else
-    cloudflared tunnel --no-autoupdate --url "$CLOUDFLARE_TUNNEL_URL" \
-      > /var/log/cloudflared.log 2>&1 &
-  fi
-  echo "cloudflared started"
-fi
-
 # Download models in parallel to reduce startup time.
 pids=()
 download "https://huggingface.co/gguf-org/z-image-gguf/resolve/main/pig_flux_vae_fp32-f16.gguf?download=true" \
@@ -114,5 +81,40 @@ fi
 apt-get update && apt-get install -y lsof
 
 
+
+##### cloudflare
+CLOUDFLARE_TUNNEL_TOKEN="${CLOUDFLARE_TUNNEL_TOKEN:-}"
+CLOUDFLARE_TUNNEL_URL="${CLOUDFLARE_TUNNEL_URL:-http://127.0.0.1:8188}"
+CLOUDFLARE_TUNNEL_ENABLE="${CLOUDFLARE_TUNNEL_ENABLE:-0}"
+
+if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" || "$CLOUDFLARE_TUNNEL_ENABLE" == "1" ]]; then
+  if ! command -v cloudflared >/dev/null 2>&1; then
+    arch="$(uname -m)"
+    case "$arch" in
+      x86_64|amd64) cf_arch="amd64" ;;
+      aarch64|arm64) cf_arch="arm64" ;;
+      *) echo "unsupported arch for cloudflared: $arch" >&2; exit 1 ;;
+    esac
+    bin_dir="/usr/local/bin"
+    if [[ ! -w "$bin_dir" ]]; then
+      bin_dir="${HOME:-/root}/.local/bin"
+      mkdir -p "$bin_dir"
+      export PATH="$bin_dir:$PATH"
+    fi
+    download "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$cf_arch" \
+      "${bin_dir}/cloudflared"
+    chmod +x "${bin_dir}/cloudflared"
+  fi
+
+  if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" ]]; then
+    cloudflared tunnel --no-autoupdate run --token "$CLOUDFLARE_TUNNEL_TOKEN" \
+      > /var/log/cloudflared.log 2>&1 &
+  else
+    cloudflared tunnel --no-autoupdate --url "$CLOUDFLARE_TUNNEL_URL" \
+      > /var/log/cloudflared.log 2>&1 &
+  fi
+  echo "cloudflared started"
+fi
+#####
 # Solo si quieres que el script arranque ComfyUI:
 python3 main.py --listen 0.0.0.0 --port 8188

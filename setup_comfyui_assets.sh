@@ -46,7 +46,10 @@ download() {
 apt-get update && apt-get install -y lsof
 python -m pip install -U GitPython
 
-
+cd /comfyui/custom_nodes/
+git clone https://github.com/ltdrdata/ComfyUI-Manager comfyui-manager
+git clone https://github.com/audioscavenger/save-image-extended-comfyui save-image-extended-comfyui
+cd /comfyui/
 ##### cloudflare
 CLOUDFLARE_TUNNEL_TOKEN="${CLOUDFLARE_TUNNEL_TOKEN:-}"
 CLOUDFLARE_TUNNEL_URL="${CLOUDFLARE_TUNNEL_URL:-http://127.0.0.1:8188}"
@@ -97,10 +100,7 @@ if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" || "$CLOUDFLARE_TUNNEL_ENABLE" == "1" ]]; th
   fi
 fi
 
-cd /comfyui/custom_nodes/
-git clone https://github.com/ltdrdata/ComfyUI-Manager comfyui-manager
-git clone https://github.com/audioscavenger/save-image-extended-comfyui save-image-extended-comfyui
-cd /comfyui/
+
 ##### 
 # Solo si quieres que el script arranque ComfyUI:
 python3 main.py --listen 0.0.0.0 --port 8188 --use-flash-attention

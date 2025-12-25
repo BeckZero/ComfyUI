@@ -99,6 +99,7 @@ fi
 
 cd /comfyui/custom_nodes/
 git clone https://github.com/ltdrdata/ComfyUI-Manager comfyui-manager
+git clone https://github.com/audioscavenger/save-image-extended-comfyui save-image-extended-comfyui
 cd /comfyui/
 ##### 
 # Solo si quieres que el script arranque ComfyUI:

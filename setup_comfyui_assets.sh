@@ -16,7 +16,7 @@ export CLOUDFLARE_TUNNEL_PROTOCOL=http2
 python3 -m pip install -r requirements.txt
 
   
-COMFYUI_DIR="${COMFYUI_DIR:-/ComfyUI}"
+COMFYUI_DIR="${COMFYUI_DIR:-/comfyui}"
 
 if [[ ! -d "$COMFYUI_DIR" ]]; then
   echo "ComfyUI dir not found: $COMFYUI_DIR" >&2

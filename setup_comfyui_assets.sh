@@ -44,7 +44,7 @@ download() {
  
 
 apt-get update && apt-get install -y lsof
-
+python -m pip install -U GitPython
 
 
 ##### cloudflare
@@ -101,3 +101,12 @@ fi
 python3 main.py --listen 0.0.0.0 --port 8188 --use-flash-attention
 # pid=$(lsof -t -i :8188) && kill $pid && sleep 1 && kill -9 $pid 2>/dev/null
 # python3 main.py --listen 0.0.0.0 --port 8188 --use-flash-attention
+
+
+# git fetch upstream
+# git checkout master
+# git merge upstream/master
+# git push origin master
+
+
+

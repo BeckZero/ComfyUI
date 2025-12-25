@@ -1,13 +1,10 @@
-.git
 .github
 .ci
 __pycache__/
 *.py[cod]
 output/
-input/
-models/
-temp/
-custom_nodes/
+input/ 
+temp/ 
 user/
 tests/
 tests-unit/

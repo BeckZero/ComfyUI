@@ -140,4 +140,6 @@ if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" || "$CLOUDFLARE_TUNNEL_ENABLE" == "1" ]]; th
 fi
 #####
 # Solo si quieres que el script arranque ComfyUI:
-python3 main.py --listen 0.0.0.0 --port 8188
+python3 main.py --listen 0.0.0.0 --port 8188 --use-flash-attention
+# pid=$(lsof -t -i :8188) && kill $pid && sleep 1 && kill -9 $pid 2>/dev/null
+# python3 main.py --listen 0.0.0.0 --port 8188 --use-flash-attention

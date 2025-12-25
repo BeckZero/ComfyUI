@@ -96,6 +96,10 @@ if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" || "$CLOUDFLARE_TUNNEL_ENABLE" == "1" ]]; th
     fi
   fi
 fi
+
+cd /comfyui/custom_nodes/
+git clone https://github.com/ltdrdata/ComfyUI-Manager comfyui-manager
+cd /comfyui/
 ##### 
 # Solo si quieres que el script arranque ComfyUI:
 python3 main.py --listen 0.0.0.0 --port 8188 --use-flash-attention

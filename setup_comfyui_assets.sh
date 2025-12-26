@@ -13,6 +13,11 @@ export COMFY_GIT_BRANCH=master
 export CLOUDFLARE_TUNNEL_ENABLE=1
 export CLOUDFLARE_TUNNEL_PROTOCOL=http2
 
+# fuerza a PyTorch a usar SDPA (scaled dot-product attention) y deja que el backend elija el mejor kernel
+export PYTORCH_ENABLE_MPS_FALLBACK=0
+export TORCH_LOGS="+attention"        # opcional: logs
+export TORCH_SHOW_CPP_STACKTRACES=1   # opcional: debug
+
 python3 -m pip install -r requirements.txt
 
   
@@ -45,6 +50,10 @@ download() {
 
 apt-get update && apt-get install -y lsof
 python -m pip install -U GitPython
+pip install --no-build-isolation   "git+https://github.com/thu-ml/SageAttention.git@main"
+python3 -m pip show SageAttention 
+pip install triton hf
+
 
 cd /comfyui/custom_nodes/
 git clone https://github.com/ltdrdata/ComfyUI-Manager comfyui-manager
@@ -99,6 +108,7 @@ if [[ -n "$CLOUDFLARE_TUNNEL_TOKEN" || "$CLOUDFLARE_TUNNEL_ENABLE" == "1" ]]; th
     fi
   fi
 fi
+
 
 
 ##### 

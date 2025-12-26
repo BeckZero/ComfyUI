@@ -21,9 +21,10 @@ export PYTORCH_ENABLE_MPS_FALLBACK=0
 python3 -m pip install -r requirements.txt
 python3 -m pip install hf
 
-export HF_HUB_ENABLE_HF_TRANSFER=1
 
 ##descargas de modelos
+export HF_HUB_ENABLE_HF_TRANSFER=1
+CIVITAI_TOKEN="d860464173933b61d5f3d7111425b1a2"
 echo "🚀 Sussy: Lanzando descargas pesadas al fondo. ¡Tú sigue a lo tuyo, cielo!"
 
 # Agrupamos TODO el proceso de descarga en un bloque de segundo plano
@@ -44,8 +45,8 @@ echo "🚀 Sussy: Lanzando descargas pesadas al fondo. ¡Tú sigue a lo tuyo, ci
 
     (hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors --local-dir . && mv split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors /comfyui/models/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors) &
 
-    (wget -O  /comfyui/models/loras/xxx_amimation_high.safetensors https://civitai.com/api/download/models/2376136?type=Model&format=SafeTensor) &
-    (wget -O  /comfyui/models/loras/xxx_amimation_high.safetensors https://civitai.com/api/download/models/2376143?type=Model&format=SafeTensor) &
+    (curl -L "https://civitai.com/api/download/models/2376136?token=$CIVITAI_TOKEN" -o /comfyui/models/loras/xxx_amimation_high.safetensors ) &
+    (curl -L "https://civitai.com/api/download/models/2376143?token=$CIVITAI_TOKEN" -o /comfyui/models/loras/xxx_amimation_low.safetensors ) & 
     # Esperamos a que terminen las descargas dentro de este bloque
     wait
 

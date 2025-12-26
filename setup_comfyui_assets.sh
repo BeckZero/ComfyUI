@@ -15,8 +15,8 @@ export CLOUDFLARE_TUNNEL_PROTOCOL=http2
 
 # fuerza a PyTorch a usar SDPA (scaled dot-product attention) y deja que el backend elija el mejor kernel
 export PYTORCH_ENABLE_MPS_FALLBACK=0
-export TORCH_LOGS="+attention"        # opcional: logs
-export TORCH_SHOW_CPP_STACKTRACES=1   # opcional: debug
+# export TORCH_LOGS="+attention"        # opcional: logs
+# export TORCH_SHOW_CPP_STACKTRACES=1   # opcional: debug
 
 python3 -m pip install -r requirements.txt
 

@@ -19,6 +19,45 @@ export PYTORCH_ENABLE_MPS_FALLBACK=0
 # export TORCH_SHOW_CPP_STACKTRACES=1   # opcional: debug
 
 python3 -m pip install -r requirements.txt
+python3 -m pip install hf
+
+export HF_HUB_ENABLE_HF_TRANSFER=1
+
+##descargas de modelos
+echo "🚀 Sussy: Lanzando descargas pesadas al fondo. ¡Tú sigue a lo tuyo, cielo!"
+
+# Agrupamos TODO el proceso de descarga en un bloque de segundo plano
+{
+    # Creamos carpetas (dentro del bloque)
+    mkdir -p text_encoders vae diffusion_models loras
+
+    # Lanzamos las descargas paralelas (como antes)
+    (hf download Comfy-Org/Wan_2.1_ComfyUI_repackaged split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors --local-dir . && mv split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors /comfyui/models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors) &
+
+    (hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/vae/wan_2.1_vae.safetensors --local-dir . && mv split_files/vae/wan_2.1_vae.safetensors /comfyui/models/vae/wan_2.1_vae.safetensors) &
+
+    (hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors --local-dir . && mv split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors /comfyui/models/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors) &
+
+    (hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors --local-dir . && mv split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors /comfyui/models/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors) &
+
+    (hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors --local-dir . && mv split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors /comfyui/models/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors) &
+
+    (hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors --local-dir . && mv split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors /comfyui/models/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors) &
+
+    # Esperamos a que terminen las descargas dentro de este bloque
+    wait
+
+    # Limpieza final
+    rm -rf split_files
+    echo -e "\n✅ [Sussy Background]: ¡Modelos Wan 2.2 listos en sus carpetas!"
+} & 
+
+# El '&' de arriba hace que todo el bloque { ... } se ejecute en paralelo con lo que viene abajo
+
+echo "🏃 Sussy: Mientras eso descarga, voy a ir ejecutando el resto de tus caprichos..."
+##fin descargas de modelos
+
+
 
   
 COMFYUI_DIR="${COMFYUI_DIR:-/comfyui}"
@@ -51,7 +90,7 @@ download() {
 apt-get update && apt-get install -y lsof
 python -m pip install -U GitPython
 apt-get update && apt-get install python3.12-dev -y
-pip install triton hf   
+pip install triton    
 pip install --no-build-isolation "git+https://github.com/thu-ml/SageAttention.git@main"
 python3 -m pip show SageAttention 
 pip install transformers -U
@@ -63,45 +102,45 @@ git clone https://github.com/audioscavenger/save-image-extended-comfyui save-ima
 cd /comfyui/
 
 
-###wan 
-# 1. Definimos la variable globalmente para no repetirla como loros
-export HF_HUB_ENABLE_HF_TRANSFER=1
+# ###wan 
+# # 1. Definimos la variable globalmente para no repetirla como loros
+# export HF_HUB_ENABLE_HF_TRANSFER=1
 
-echo "🔥 Sussy: Iniciando descargas paralelas masivas..."
+# echo "🔥 Sussy: Iniciando descargas paralelas masivas..."
 
-# 2. Creamos los directorios de destino PRIMERO para evitar errores al mover
-mkdir -p text_encoders vae diffusion_models loras
+# # 2. Creamos los directorios de destino PRIMERO para evitar errores al mover
+# mkdir -p text_encoders vae diffusion_models loras
 
-# 3. Lanzamos las tareas en segundo plano con '&'
-# Usamos ( && ) & para agrupar la descarga y el movimiento en un solo subproceso
+# # 3. Lanzamos las tareas en segundo plano con '&'
+# # Usamos ( && ) & para agrupar la descarga y el movimiento en un solo subproceso
 
-(hf download Comfy-Org/Wan_2.1_ComfyUI_repackaged split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors --local-dir . && mv 
-split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors) &
+# (hf download Comfy-Org/Wan_2.1_ComfyUI_repackaged split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors --local-dir . && mv 
+# split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors) &
 
-(hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/vae/wan_2.1_vae.safetensors --local-dir . && mv split_files/vae/wan_2.1_vae.safetensors 
-vae/wan_2.1_vae.safetensors) &
+# (hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/vae/wan_2.1_vae.safetensors --local-dir . && mv split_files/vae/wan_2.1_vae.safetensors 
+# vae/wan_2.1_vae.safetensors) &
 
-(hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors --local-dir . && mv 
-split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors) &
+# (hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors --local-dir . && mv 
+# split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors) &
 
-(hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors --local-dir . && mv 
-split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors) &
+# (hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors --local-dir . && mv 
+# split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors) &
 
-(hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors --local-dir . && mv 
-split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors) &
+# (hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors --local-dir . && mv 
+# split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors) &
 
-(hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors --local-dir . && mv 
-split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors) &
+# (hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors --local-dir . && mv 
+# split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors) &
 
-# 4. IMPORTANTE: Esperamos a que todos los hijos terminen
-wait
+# # 4. IMPORTANTE: Esperamos a que todos los hijos terminen
+# wait
 
-# 5. Limpieza (Opcional, pero me gusta tener la casa limpia)
-echo "🧹 Limpiando carpetas temporales..."
-rm -rf split_files
+# # 5. Limpieza (Opcional, pero me gusta tener la casa limpia)
+# echo "🧹 Limpiando carpetas temporales..."
+# rm -rf split_files
 
-echo "✨ ¡Descargas completadas, guapo! Todo tuyo."
-########## fin descargagas wan
+# echo "✨ ¡Descargas completadas, guapo! Todo tuyo."
+# ########## fin descargagas wan
 
 
 ##### cloudflare

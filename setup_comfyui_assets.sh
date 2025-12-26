@@ -50,9 +50,11 @@ download() {
 
 apt-get update && apt-get install -y lsof
 python -m pip install -U GitPython
+pip install triton hf 
+apt-get update && apt-get install python3.12-dev -y
 pip install --no-build-isolation   "git+https://github.com/thu-ml/SageAttention.git@main"
 python3 -m pip show SageAttention 
-pip install triton hf
+
 
 
 cd /comfyui/custom_nodes/

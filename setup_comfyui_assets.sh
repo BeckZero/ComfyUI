@@ -44,6 +44,8 @@ echo "🚀 Sussy: Lanzando descargas pesadas al fondo. ¡Tú sigue a lo tuyo, ci
 
     (hf download Comfy-Org/Wan_2.2_ComfyUI_repackaged split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors --local-dir . && mv split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors /comfyui/models/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors) &
 
+    (wget -O  /comfyui/models/loras/xxx_amimation_high.safetensors https://civitai.com/api/download/models/2376136?type=Model&format=SafeTensor) &
+    (wget -O  /comfyui/models/loras/xxx_amimation_high.safetensors https://civitai.com/api/download/models/2376143?type=Model&format=SafeTensor) &
     # Esperamos a que terminen las descargas dentro de este bloque
     wait
 

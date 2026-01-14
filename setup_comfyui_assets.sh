@@ -100,7 +100,9 @@ echo "🚀 Sussy: Lanzando descargas pesadas al fondo. ¡Tú sigue a lo tuyo, ci
 
     (hf download lightx2v/Qwen-Image-Edit-2511-Lightning  qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning_comfyui_4steps_v1.0.safetensors --local-dir . && mv qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning_comfyui_4steps_v1.0.safetensors /comfyui/models/diffusion_models/qwen_image_edit_2511_fp8_e4m3fn_scaled_lightning_comfyui_4steps_v1.0.safetensors) &  
     
+    (hf Comfy-Org/Qwen-Image_ComfyUI split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors --local-dir . && mv split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors /comfyui/models/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors) &
 
+    (hf download Comfy-Org/z_image_turbo split_files/vae/qwen_image_vae.safetensors  --local-dir . && mv split_files/vae/qwen_image_vae.safetensors  /comfyui/models/vae/qwen_image_vae.safetensors ) & 
     # qwen_2.5_vl_7b_fp8_scaled.safetensors
 
     # qwen_image_vae.safetensors

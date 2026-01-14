@@ -102,7 +102,7 @@ echo "🚀 Sussy: Lanzando descargas pesadas al fondo. ¡Tú sigue a lo tuyo, ci
     
     (hf Comfy-Org/Qwen-Image_ComfyUI split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors --local-dir . && mv split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors /comfyui/models/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors) &
 
-    (hf download Comfy-Org/z_image_turbo split_files/vae/qwen_image_vae.safetensors  --local-dir . && mv split_files/vae/qwen_image_vae.safetensors  /comfyui/models/vae/qwen_image_vae.safetensors ) & 
+    (hf download Comfy-Org/Image_ComfyUI split_files/vae/qwen_image_vae.safetensors  --local-dir . && mv split_files/vae/qwen_image_vae.safetensors  /comfyui/models/vae/qwen_image_vae.safetensors ) & 
     # qwen_2.5_vl_7b_fp8_scaled.safetensors
 
     # qwen_image_vae.safetensors

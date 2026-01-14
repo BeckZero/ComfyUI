@@ -73,11 +73,11 @@ echo "🚀 Sussy: Lanzando descargas pesadas al fondo. ¡Tú sigue a lo tuyo, ci
     mkdir -p text_encoders vae diffusion_models loras
     (hf download Comfy-Org/z_image_turbo split_files/diffusion_models/z_image_turbo_nvfp4.safetensors --local-dir . && mv split_files/diffusion_models/z_image_turbo_nvfp4.safetensors /comfyui/models/diffusion_models/z_image_turbo_nvfp4.safetensors) &
 
-    (hf download Comfy-Org/z_image_turbo split_files/loras/z_image_turbo_distill_patch_lora_bf16.safetensors  --local-dir . && mv split_files/loras/z_image_turbo_distill_patch_lora_bf16.safetensors  /comfyui/models/loras/z_image_turbo_distill_patch_lora_bf16.safetensors ) & 
+    # (hf download Comfy-Org/z_image_turbo split_files/loras/z_image_turbo_distill_patch_lora_bf16.safetensors  --local-dir . && mv split_files/loras/z_image_turbo_distill_patch_lora_bf16.safetensors  /comfyui/models/loras/z_image_turbo_distill_patch_lora_bf16.safetensors ) & 
 
-    (hf download Comfy-Org/z_image_turbo split_files/text_encoders/qwen_3_4b_fp8_mixed.safetensors  --local-dir . && mv split_files/text_encoders/qwen_3_4b_fp8_mixed.safetensors  /comfyui/models/text_encoders/qwen_3_4b_fp8_mixed.safetensors ) & 
+    # (hf download Comfy-Org/z_image_turbo split_files/text_encoders/qwen_3_4b_fp8_mixed.safetensors  --local-dir . && mv split_files/text_encoders/qwen_3_4b_fp8_mixed.safetensors  /comfyui/models/text_encoders/qwen_3_4b_fp8_mixed.safetensors ) & 
 
-    (hf download Comfy-Org/z_image_turbo split_files/vae/ae.safetensors  --local-dir . && mv split_files/vae/ae.safetensors  /comfyui/models/vae/ae.safetensors ) & 
+    # (hf download Comfy-Org/z_image_turbo split_files/vae/ae.safetensors  --local-dir . && mv split_files/vae/ae.safetensors  /comfyui/models/vae/ae.safetensors ) & 
 
     (hf download xFanexx/4x-AnimeSharp 4x-AnimeSharp.pth --local-dir . && mv 4x-AnimeSharp.pth /comfyui/models/upscale_models/4x-AnimeSharp.pth) &
 

@@ -12,3 +12,7 @@ tests-unit/
 *.safetensors
 .DS_Store
 ._*
+
+.git
+models/
+custom_nodes/
